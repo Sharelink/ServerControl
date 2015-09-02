@@ -1,0 +1,11 @@
+﻿{
+  "Data": {
+    "App": {
+      "appname": "ServerController",
+      "appkey": "62a3796243770ba5db00364b05c81a7a057e028d"
+    },
+    "ServerControlDBConnection": {
+      "connectionString": "server=192.168.0.20;user id=root;password=dfyybest;persistsecurityinfo=True;database=ServerControlDB;Pooling=true; Max Pool Size=50;"
+    }
+  }
+}
