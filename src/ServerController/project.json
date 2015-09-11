@@ -3,10 +3,10 @@
   "version": "1.0.0-*",
 
   "dependencies": {
-    "Microsoft.AspNet.Server.IIS": "1.0.0-beta6",
-    "Microsoft.AspNet.Server.WebListener": "1.0.0-beta6",
-    "Microsoft.Framework.Configuration.Json": "1.0.0-beta6",
-    "Microsoft.Framework.Configuration.UserSecrets": "1.0.0-beta6",
+    "Microsoft.AspNet.Server.IIS": "1.0.0-*",
+    "Microsoft.AspNet.Server.WebListener": "1.0.0-*",
+    "Microsoft.Framework.Configuration.Json": "1.0.0-*",
+    "Microsoft.Framework.Configuration.UserSecrets": "1.0.0-*",
     "ServerControlService": "1.0.0-*"
   },
 

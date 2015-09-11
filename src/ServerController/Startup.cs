@@ -8,7 +8,7 @@ using Microsoft.Framework.DependencyInjection;
 using ServerControlService.Model;
 using Microsoft.Framework.Configuration;
 using Microsoft.AspNet.Hosting;
-using Microsoft.Framework.Runtime;
+using Microsoft.Dnx.Runtime;
 
 namespace ServerController
 {
