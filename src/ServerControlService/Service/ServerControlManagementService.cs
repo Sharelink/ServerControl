@@ -24,59 +24,79 @@ namespace ServerControlService.Service
 
     public class ServerControlManagementService
     {
-        protected RedisClient Client { get; private set; }
-        public ServerControlManagementService(IRedisServerConfig ServerConfig)
-            : this(ServerConfig.Host, ServerConfig.Port, ServerConfig.Password, ServerConfig.Db)
-        {
-        }
-        public ServerControlManagementService(string host, int port, string password = null, long db = 0):
-            this(new RedisClient(new RedisEndpoint(host, port, password, db)))
-        {
-        }
+        private IRedisClientsManager controlServerServiceClientManager;
 
-        public ServerControlManagementService(RedisClient Client)
+        public ServerControlManagementService(IRedisClientsManager controlServerServiceClientManager)
         {
-            this.Client = Client;
+            this.controlServerServiceClientManager = controlServerServiceClientManager;
         }
 
         public BahamutAppInstance GetMostFreeAppInstance(string appkey)
         {
-            var client = Client.As<BahamutAppInstance>();
-            var instanceList = client.GetAllItemsFromList(client.Lists[appkey]);
-            if(instanceList.Count == 0)
+            using (var Client = controlServerServiceClientManager.GetClient())
             {
-                throw new NoAppInstanceException();
-            }
-            foreach (var item in instanceList)
-            {
-                if (client.ContainsKey(item.Id))
+                var client = Client.As<BahamutAppInstance>();
+                try
                 {
-                    return item;
+                    var instanceList = client.GetAllItemsFromList(client.Lists[appkey]);
+                    if (instanceList.Count == 0)
+                    {
+                        throw new NoAppInstanceException();
+                    }
+                    foreach (var item in instanceList)
+                    {
+                        if (client.ContainsKey(item.Id))
+                        {
+                            Console.WriteLine(string.Format("App Instance:{0} Provide Service", item.Id));
+                            return item;
+                        }
+                    }
+                    throw new NoAppInstanceException();
+                }
+                catch (Exception)
+                {
+                    throw new NoAppInstanceException();
                 }
             }
-            throw new NoAppInstanceException();
+                
         }
 
         public BahamutAppInstance RegistAppInstance(BahamutAppInstance instance)
         {
-            instance.RegistTime = DateTime.Now;
-            instance.Id = Guid.NewGuid().ToString();
-            var client = Client.As<BahamutAppInstance>();
-            var appInstanceList = client.Lists[instance.Appkey];
-            appInstanceList.Add(instance);
-            client.SetEntry(instance.Id, instance, TimeSpan.FromMinutes(10));
-            return instance;
+            using (var Client = controlServerServiceClientManager.GetClient())
+            {
+                instance.RegistTime = DateTime.Now;
+                instance.Id = Guid.NewGuid().ToString();
+                var client = Client.As<BahamutAppInstance>();
+                var appInstanceList = client.Lists[instance.Appkey];
+                appInstanceList.Add(instance);
+                client.SetEntry(instance.Id, instance, TimeSpan.FromMinutes(10));
+                return instance;
+            }
         }
 
         public void StartKeepAlive(string instanceId)
         {
             var thread = new Thread(() =>
             {
-                var client = Client.As<BahamutAppInstance>();
-                var time = TimeSpan.FromMinutes(10);
-                while (true)
+                using (var Client = controlServerServiceClientManager.GetClient())
                 {
-                    client.ExpireEntryIn(instanceId, time);
+                    var client = Client.As<BahamutAppInstance>();
+                    var time = TimeSpan.FromMinutes(1);
+                    while (true)
+                    {
+                        try
+                        {
+                            Console.WriteLine(string.Format("Instance:{0} Expired", instanceId));
+                            client.ExpireEntryIn(instanceId, time);
+                        }
+                        catch (Exception)
+                        {
+                            Console.WriteLine("Expire Instance Error");
+                        }
+                        
+                        Thread.Sleep((int)(time.TotalMilliseconds * 3 / 4));
+                    }
                 }
             });
             thread.IsBackground = false;
@@ -85,10 +105,13 @@ namespace ServerControlService.Service
 
         public bool AppInstanceOffline(BahamutAppInstance instance)
         {
-            var client = Client.As<BahamutAppInstance>();
-            var appInstanceList = client.Lists[instance.Appkey];
-            client.RemoveEntry(instance.Id);
-            return appInstanceList.Remove(instance);
+            using (var Client = controlServerServiceClientManager.GetClient())
+            {
+                var client = Client.As<BahamutAppInstance>();
+                var appInstanceList = client.Lists[instance.Appkey];
+                client.RemoveEntry(instance.Id);
+                return appInstanceList.Remove(instance);
+            }
         }
     }
 }
