@@ -45,7 +45,7 @@ namespace ServerControlService.Service
                     }
                     foreach (var item in instanceList)
                     {
-                        if (client.ContainsKey(item.Id))
+                        if (Client.ContainsKey(item.Id))
                         {
                             Console.WriteLine(string.Format("App Instance:{0} Provide Service", item.Id));
                             return item;
@@ -70,7 +70,7 @@ namespace ServerControlService.Service
                 var client = Client.As<BahamutAppInstance>();
                 var appInstanceList = client.Lists[instance.Appkey];
                 appInstanceList.Add(instance);
-                client.SetEntry(instance.Id, instance, TimeSpan.FromMinutes(10));
+                Client.SetValue(instance.Id, DateTime.Now.Ticks.ToString(), TimeSpan.FromMinutes(10));
                 return instance;
             }
         }
@@ -81,14 +81,14 @@ namespace ServerControlService.Service
             {
                 using (var Client = controlServerServiceClientManager.GetClient())
                 {
-                    var client = Client.As<BahamutAppInstance>();
                     var time = TimeSpan.FromMinutes(1);
                     while (true)
                     {
                         try
                         {
                             Console.WriteLine(string.Format("Instance:{0} Expired", instanceId));
-                            client.ExpireEntryIn(instanceId, time);
+                            Client.ExpireEntryIn(instanceId, time);
+
                         }
                         catch (Exception)
                         {
