@@ -47,7 +47,6 @@ namespace ServerControlService.Service
                     {
                         if (Client.ContainsKey(item.Id))
                         {
-                            Console.WriteLine(string.Format("App Instance:{0} Provide Service", item.Id));
                             return item;
                         }
                     }
@@ -86,7 +85,6 @@ namespace ServerControlService.Service
                     {
                         try
                         {
-                            Console.WriteLine(string.Format("Instance:{0} Expired", instanceId));
                             Client.ExpireEntryIn(instanceId, time);
 
                         }
