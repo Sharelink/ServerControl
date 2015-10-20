@@ -64,12 +64,12 @@ namespace ServerControlService.Service
         {
             using (var Client = controlServerServiceClientManager.GetClient())
             {
-                instance.RegistTime = DateTime.Now;
+                instance.RegistTime = DateTime.UtcNow;
                 instance.Id = Guid.NewGuid().ToString();
                 var client = Client.As<BahamutAppInstance>();
                 var appInstanceList = client.Lists[instance.Appkey];
                 appInstanceList.Add(instance);
-                Client.SetValue(instance.Id, DateTime.Now.Ticks.ToString(), TimeSpan.FromMinutes(10));
+                Client.SetValue(instance.Id, DateTime.UtcNow.Ticks.ToString(), TimeSpan.FromMinutes(10));
                 return instance;
             }
         }
