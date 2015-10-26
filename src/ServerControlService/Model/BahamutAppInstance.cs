@@ -13,6 +13,8 @@ namespace ServerControlService.Model
         public int InstanceEndPointPort { get; set; }
         public string InstanceServiceUrl { get; set; }
         public string Data { get; set; }
+        public int OnlineUsers { get; set; }
+        public string Region { get; set; }
         public DateTime RegistTime { get; set; }
     }
 }

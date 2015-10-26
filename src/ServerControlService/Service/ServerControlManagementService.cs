@@ -31,26 +31,42 @@ namespace ServerControlService.Service
             this.controlServerServiceClientManager = controlServerServiceClientManager;
         }
 
-        public BahamutAppInstance GetMostFreeAppInstance(string appkey)
+        public BahamutAppInstance GetMostFreeAppInstance(string appkey,string region = "default")
         {
             using (var Client = controlServerServiceClientManager.GetClient())
             {
                 var client = Client.As<BahamutAppInstance>();
                 try
                 {
-                    var instanceList = client.GetAllItemsFromList(client.Lists[appkey]);
-                    if (instanceList.Count == 0)
+                    var instanceList = client.Lists[appkey];
+                    var instances = from s in instanceList where s.Region == region select s;
+                    if (instances.Count() == 0)
                     {
                         throw new NoAppInstanceException();
                     }
-                    foreach (var item in instanceList)
+                    BahamutAppInstance freeInstance = null;
+                    foreach (var item in instances)
                     {
-                        if (Client.ContainsKey(item.Id))
+                        var ins = client.GetValue(item.Id);
+                        if (ins != null)
                         {
-                            return item;
+                            if (freeInstance == null)
+                            {
+                                freeInstance = ins;
+                            }
                         }
+                        else
+                        {
+                            client.Lists[appkey].Remove(item);
+                        }
+                        
                     }
-                    throw new NoAppInstanceException();
+                    if (freeInstance == null)
+                    {
+                        throw new NoAppInstanceException();
+                    }
+                    freeInstance.OnlineUsers++;
+                    return client.GetAndSetValue(freeInstance.Id, freeInstance);
                 }
                 catch (Exception)
                 {
@@ -67,9 +83,8 @@ namespace ServerControlService.Service
                 instance.RegistTime = DateTime.UtcNow;
                 instance.Id = Guid.NewGuid().ToString();
                 var client = Client.As<BahamutAppInstance>();
-                var appInstanceList = client.Lists[instance.Appkey];
-                appInstanceList.Add(instance);
-                Client.SetValue(instance.Id, DateTime.UtcNow.Ticks.ToString(), TimeSpan.FromMinutes(10));
+                client.Lists[instance.Appkey].Add(instance);
+                client.SetEntry(instance.Id,instance, TimeSpan.FromMinutes(10));
                 return instance;
             }
         }
@@ -81,11 +96,12 @@ namespace ServerControlService.Service
                 using (var Client = controlServerServiceClientManager.GetClient())
                 {
                     var time = TimeSpan.FromMinutes(1);
+                    var client = Client.As<BahamutAppInstance>();
                     while (true)
                     {
                         try
                         {
-                            Client.ExpireEntryIn(instanceId, time);
+                            client.ExpireEntryIn(instanceId, time);
 
                         }
                         catch (Exception)
@@ -106,9 +122,8 @@ namespace ServerControlService.Service
             using (var Client = controlServerServiceClientManager.GetClient())
             {
                 var client = Client.As<BahamutAppInstance>();
-                var appInstanceList = client.Lists[instance.Appkey];
-                client.RemoveEntry(instance.Id);
-                return appInstanceList.Remove(instance);
+                client.Lists[instance.Appkey].Remove(instance);
+                return client.RemoveEntry(instance.Id);
             }
         }
     }
