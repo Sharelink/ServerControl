@@ -1,5 +1,4 @@
-﻿using DataLevelDefines;
-using ServerControlService.Model;
+﻿using ServerControlService.Model;
 using ServiceStack.Redis;
 using System;
 using System.Collections.Generic;
