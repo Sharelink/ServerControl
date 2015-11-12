@@ -46,19 +46,17 @@ namespace ServerControlService.Service
                     BahamutAppInstance freeInstance = null;
                     foreach (var item in instances)
                     {
-                        var ins = client.GetValue(item.Id);
-                        if (ins != null)
+                        if (client.ContainsKey(item.Id))
                         {
                             if (freeInstance == null)
                             {
-                                freeInstance = ins;
+                                freeInstance = item;
                             }
                         }
                         else
                         {
-                            client.Lists[appkey].Remove(item);
+                            instanceList.Remove(item);
                         }
-                        
                     }
                     if (freeInstance == null)
                     {
@@ -83,7 +81,7 @@ namespace ServerControlService.Service
                 instance.Id = Guid.NewGuid().ToString();
                 var client = Client.As<BahamutAppInstance>();
                 client.Lists[instance.Appkey].Add(instance);
-                client.SetEntry(instance.Id,instance, TimeSpan.FromMinutes(10));
+                client.SetEntry(instance.Id,instance, TimeSpan.FromMinutes(1));
                 return instance;
             }
         }
@@ -100,8 +98,10 @@ namespace ServerControlService.Service
                     {
                         try
                         {
-                            client.ExpireEntryIn(instanceId, time);
-
+                            if (client.ExpireEntryIn(instanceId, time) == false)
+                            {
+                                Console.WriteLine("Expire Instance Error");
+                            }
                         }
                         catch (Exception)
                         {
