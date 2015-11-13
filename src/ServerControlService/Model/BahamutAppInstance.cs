@@ -16,5 +16,20 @@ namespace ServerControlService.Model
         public int OnlineUsers { get; set; }
         public string Region { get; set; }
         public DateTime RegistTime { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            var instance = obj as BahamutAppInstance;
+            if (instance != null)
+            {
+                return Id == instance.Id && Appkey == instance.Appkey;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
     }
 }
