@@ -83,7 +83,7 @@ namespace ServerControlService.Service
                     BahamutAppInstance freeInstance = null;
                     foreach (var item in instances)
                     {
-                        if (client.ContainsKey(item.Id))
+                        if (Client.ContainsKey(item.Id))
                         {
                             if (freeInstance == null)
                             {
@@ -92,7 +92,7 @@ namespace ServerControlService.Service
                         }
                         else
                         {
-                            instanceList.Remove(item);
+                            client.RemoveItemFromSet(client.Sets[appkey], item);
                         }
                     }
                     if (freeInstance == null)
@@ -100,7 +100,7 @@ namespace ServerControlService.Service
                         throw new NoAppInstanceException();
                     }
                     freeInstance.OnlineUsers++;
-                    return client.GetAndSetValue(freeInstance.Id, freeInstance);
+                    return freeInstance;
                 }
                 catch (Exception)
                 {
@@ -118,7 +118,7 @@ namespace ServerControlService.Service
                 instance.Id = Guid.NewGuid().ToString();
                 var client = Client.As<BahamutAppInstance>();
                 client.Sets[instance.Appkey].Add(instance);
-                client.SetEntry(instance.Id,instance, TimeSpan.FromMinutes(AppInstanceExpireTimeOfMinutes));
+                Client.Set(instance.Id, "online", TimeSpan.FromMinutes(AppInstanceExpireTimeOfMinutes));
                 return instance;
             }
         }
@@ -132,7 +132,7 @@ namespace ServerControlService.Service
                 client.Sets[instance.Appkey].Add(instance);
                 try
                 {
-                    client.SetEntry(instance.Id, instance, TimeSpan.FromMinutes(AppInstanceExpireTimeOfMinutes));
+                    Client.Set(instance.Id, "online", TimeSpan.FromMinutes(AppInstanceExpireTimeOfMinutes));
                     return false;
                 }
                 catch (Exception)
@@ -150,12 +150,11 @@ namespace ServerControlService.Service
                 using (var Client = controlServerServiceClientManager.GetClient())
                 {
                     var time = TimeSpan.FromMinutes(AppInstanceExpireTimeOfMinutes);
-                    var client = Client.As<BahamutAppInstance>();
                     while (true)
                     {
                         try
                         {
-                            if (client.ExpireEntryIn(instance.Id, time))
+                            if (Client.ExpireEntryIn(instance.Id, time))
                             {
                                 observer.DispatchExpireOnce(instance);
                             }
@@ -181,9 +180,7 @@ namespace ServerControlService.Service
         {
             using (var Client = controlServerServiceClientManager.GetClient())
             {
-                var client = Client.As<BahamutAppInstance>();
-                client.Sets[instance.Appkey].Remove(instance);
-                return client.RemoveEntry(instance.Id);
+                return Client.Remove(instance.Id);
             }
         }
     }
