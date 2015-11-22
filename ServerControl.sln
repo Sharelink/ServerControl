@@ -8,10 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{90324E9E-1EED-450F-A3B0-C6778B7F8CDD}"
 	ProjectSection(SolutionItems) = preProject
 		global.json = global.json
-		NuGet.Config = NuGet.Config
 	EndProjectSection
-EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "ServerController", "src\ServerController\ServerController.xproj", "{7926451E-BA26-438E-9C4F-BD2F6566AA63}"
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "ServerControlService", "src\ServerControlService\ServerControlService.xproj", "{FBA78BE4-EF95-4BA8-BBD5-D78EB85652B6}"
 EndProject
@@ -27,10 +24,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7926451E-BA26-438E-9C4F-BD2F6566AA63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7926451E-BA26-438E-9C4F-BD2F6566AA63}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7926451E-BA26-438E-9C4F-BD2F6566AA63}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7926451E-BA26-438E-9C4F-BD2F6566AA63}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FBA78BE4-EF95-4BA8-BBD5-D78EB85652B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FBA78BE4-EF95-4BA8-BBD5-D78EB85652B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FBA78BE4-EF95-4BA8-BBD5-D78EB85652B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -52,7 +45,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{7926451E-BA26-438E-9C4F-BD2F6566AA63} = {A2382C29-B76E-48B4-B083-E33F8D8B9625}
 		{FBA78BE4-EF95-4BA8-BBD5-D78EB85652B6} = {A2382C29-B76E-48B4-B083-E33F8D8B9625}
 		{4B5044BD-BD86-4537-8528-DFD5942AED5A} = {A2382C29-B76E-48B4-B083-E33F8D8B9625}
 		{2EF2E209-4289-46A9-BCA5-6555CB39BF68} = {90324E9E-1EED-450F-A3B0-C6778B7F8CDD}
