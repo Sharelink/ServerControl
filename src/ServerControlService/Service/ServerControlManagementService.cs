@@ -30,10 +30,18 @@ namespace ServerControlService.Service
 
         internal void DispatchExpireError(BahamutAppInstance instance, Exception ex)
         {
-            if (OnExpireError != null)
+            try
             {
-                OnExpireError.BeginInvoke(this, new KeepAliveObserverEventArgs() {Instance = instance,  Exception = ex }, Callback, OnExpireOnce);
+                if (OnExpireError != null)
+                {
+                    OnExpireError.BeginInvoke(this, new KeepAliveObserverEventArgs() { Instance = instance, Exception = ex }, Callback, OnExpireOnce);
+                }
             }
+            catch (Exception)
+            {
+                
+            }
+            
         }
 
         internal void DispatchExpireOnce(BahamutAppInstance instance)
