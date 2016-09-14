@@ -1,10 +1,12 @@
 ﻿using ServerControlService.Model;
-using ServiceStack.Redis;
+using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using BahamutCommon;
 
 namespace ServerControlService.Service
 {
@@ -53,143 +55,112 @@ namespace ServerControlService.Service
         }
     }
 
-    [Serializable]
     public class NoAppInstanceException : Exception
     {
         public NoAppInstanceException() { }
         public NoAppInstanceException(string message) : base(message) { }
         public NoAppInstanceException(string message, Exception inner) : base(message, inner) { }
-        protected NoAppInstanceException(
-          System.Runtime.Serialization.SerializationInfo info,
-          System.Runtime.Serialization.StreamingContext context) : base(info, context)
-        { }
     }
 
     public class ServerControlManagementService
     {
-        public static int AppInstanceExpireTimeOfMinutes = 1;
-        private IRedisClientsManager controlServerServiceClientManager;
+        public static TimeSpan AppInstanceExpireTimeOfMinutes = TimeSpan.FromMinutes(1);
 
-        public ServerControlManagementService(IRedisClientsManager controlServerServiceClientManager)
+        private ConnectionMultiplexer redis;
+        
+
+        public ServerControlManagementService(ConnectionMultiplexer redis)
         {
-            this.controlServerServiceClientManager = controlServerServiceClientManager;
+            this.redis = redis;
         }
 
-        public BahamutAppInstance GetMostFreeAppInstance(string appkey,string region = "default")
+        public async Task<bool> RegistAppInstanceAsync(BahamutAppInstance instance)
         {
-            using (var Client = controlServerServiceClientManager.GetClient())
+            instance.RegistTime = DateTime.UtcNow;
+            instance.Id = Guid.NewGuid().ToString();
+            var suc = await redis.GetDatabase().StringSetAsync(instance.GetInstanceIdKey(), instance.ToJson());
+            if (suc)
             {
-                var client = Client.As<BahamutAppInstance>();
-                try
-                {
-                    var instanceList = client.Sets[appkey];
-                    var instances = from s in instanceList where s.Region == region select s;
-                    if (instances.Count() == 0)
-                    {
-                        throw new NoAppInstanceException();
-                    }
-                    BahamutAppInstance freeInstance = null;
-                    foreach (var item in instances)
-                    {
-                        if (Client.ContainsKey(item.Id))
-                        {
-                            if (freeInstance == null)
-                            {
-                                freeInstance = item;
-                            }
-                        }
-                        else
-                        {
-                            client.RemoveItemFromSet(client.Sets[appkey], item);
-                        }
-                    }
-                    if (freeInstance == null)
-                    {
-                        throw new NoAppInstanceException();
-                    }
-                    freeInstance.OnlineUsers++;
-                    return freeInstance;
-                }
-                catch (Exception)
-                {
-                    throw new NoAppInstanceException();
-                }
+                return await PublishNotifyAsync(instance, BahamutAppInstanceNotification.TYPE_REGIST_APP_INSTANCE);
             }
-                
+            return false;
         }
 
-        public BahamutAppInstance RegistAppInstance(BahamutAppInstance instance)
+        private async Task<bool> PublishNotifyAsync(BahamutAppInstance instance, string type)
         {
-            using (var Client = controlServerServiceClientManager.GetClient())
-            {
-                instance.RegistTime = DateTime.UtcNow;
-                instance.Id = Guid.NewGuid().ToString();
-                var client = Client.As<BahamutAppInstance>();
-                client.Sets[instance.Appkey].Add(instance);
-                Client.Set(instance.Id, "online", TimeSpan.FromMinutes(AppInstanceExpireTimeOfMinutes));
-                return instance;
-            }
+            var notify = BahamutAppInstanceNotification.GenerateNotificationByInstance(instance, type).ToJson();
+            var x = await redis.GetSubscriber().PublishAsync(instance.Channel, notify);
+            return x > 0;
         }
 
-        public bool ReActiveAppInstance(BahamutAppInstance instance)
+        public async Task<bool> NotifyAppInstanceOfflineAsync(BahamutAppInstance instance)
         {
-            using (var Client = controlServerServiceClientManager.GetClient())
-            {
-                instance.RegistTime = DateTime.UtcNow;
-                var client = Client.As<BahamutAppInstance>();
-                client.Sets[instance.Appkey].Add(instance);
-                try
-                {
-                    Client.Set(instance.Id, "online", TimeSpan.FromMinutes(AppInstanceExpireTimeOfMinutes));
-                    return false;
-                }
-                catch (Exception)
-                {
-                    return true;
-                }
-            }
+            return await PublishNotifyAsync(instance, BahamutAppInstanceNotification.TYPE_INSTANCE_OFFLINE);
         }
 
+        public async Task<bool> ReActiveAppInstance(BahamutAppInstance instance)
+        {
+            var instanceJson = instance.ToJson();
+            var suc = await redis.GetDatabase().StringSetAsync(instance.GetInstanceIdKey(), instanceJson);
+            if (suc)
+            {
+                return await PublishNotifyAsync(instance, BahamutAppInstanceNotification.TYPE_REGIST_APP_INSTANCE);
+            }
+            return false;
+        }
+
+        public async Task<bool> NotifyAppInstanceHeartBeatAsync(BahamutAppInstance instance)
+        {
+            return await PublishNotifyAsync(instance, BahamutAppInstanceNotification.TYPE_INSTANCE_HEART_BEAT);
+        }
+
+        public async Task<BahamutAppInstance> GetAppInstanceAsync(string instanceId)
+        {
+            var instanceJson = await redis.GetDatabase().StringGetAsync(BahamutAppInstance.GenerateAppInstanceKey(instanceId));
+            if (!string.IsNullOrWhiteSpace(instanceJson))
+            {
+                return BahamutAppInstance.FromJson(instanceJson);
+            }
+            return null;
+        }
+        
         public KeepAliveObserver StartKeepAlive(BahamutAppInstance instance)
         {
             var observer = new KeepAliveObserver();
             var thread = new Thread(() =>
             {
-                using (var Client = controlServerServiceClientManager.GetClient())
+                var idKey = instance.GetInstanceIdKey();
+                while (true)
                 {
-                    var time = TimeSpan.FromMinutes(AppInstanceExpireTimeOfMinutes);
-                    while (true)
+                    try
                     {
-                        try
+                        var db = redis.GetDatabase();
+                        if (db.KeyExpire(idKey, AppInstanceExpireTimeOfMinutes))
                         {
-                            if (Client.ExpireEntryIn(instance.Id, time))
-                            {
-                                observer.DispatchExpireOnce(instance);
-                            }
-                            else
-                            {
-                                observer.DispatchExpireError(instance, new Exception("Expire Instance Error"));
-                            }
-                        }
-                        catch (Exception ex)
+                            observer.DispatchExpireOnce(instance);
+                        }else
                         {
-                            observer.DispatchExpireError(instance, ex);
+                            observer.DispatchExpireError(instance, new Exception("Expire Instance Error"));
                         }
-                        Thread.Sleep((int)(time.TotalMilliseconds * 3 / 4));
                     }
+                    catch (Exception ex)
+                    {
+                        observer.DispatchExpireError(instance, ex);
+                    }
+                    Thread.Sleep((int)(AppInstanceExpireTimeOfMinutes.TotalMilliseconds * 3 / 4));
                 }
             });
             thread.IsBackground = true;
             thread.Start();
             return observer;
         }
+    }
 
-        public bool AppInstanceOffline(BahamutAppInstance instance)
+    public static class GetServiceExtension
+    {
+        public static ServerControlManagementService GetServerControlManagementService(this IServiceProvider provider)
         {
-            using (var Client = controlServerServiceClientManager.GetClient())
-            {
-                return Client.Remove(instance.Id);
-            }
+            return provider.GetService<ServerControlManagementService>();
         }
     }
 }
