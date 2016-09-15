@@ -21,22 +21,13 @@ namespace ServerControlService.Service
         public event EventHandler<KeepAliveObserverEventArgs> OnExpireError;
         public event EventHandler<KeepAliveObserverEventArgs> OnExpireOnce;
 
-        private void Callback(IAsyncResult ar)
-        {
-            EventHandler handler = ar.AsyncState as EventHandler;
-            if (handler != null)
-            {
-                handler.EndInvoke(ar);
-            }
-        }
-
-        internal void DispatchExpireError(BahamutAppInstance instance, Exception ex)
+        public void DispatchExpireError(BahamutAppInstance instance, Exception ex)
         {
             try
             {
                 if (OnExpireError != null)
                 {
-                    OnExpireError.BeginInvoke(this, new KeepAliveObserverEventArgs() { Instance = instance, Exception = ex }, Callback, OnExpireOnce);
+                    OnExpireError.DynamicInvoke(this, new KeepAliveObserverEventArgs() { Instance = instance, Exception = ex });
                 }
             }
             catch (Exception)
@@ -46,11 +37,11 @@ namespace ServerControlService.Service
             
         }
 
-        internal void DispatchExpireOnce(BahamutAppInstance instance)
+        public void DispatchExpireOnce(BahamutAppInstance instance)
         {
             if (OnExpireOnce != null)
             {
-                OnExpireOnce.BeginInvoke(this, new KeepAliveObserverEventArgs() { Instance = instance }, Callback, OnExpireOnce);
+                OnExpireOnce.DynamicInvoke(this, new KeepAliveObserverEventArgs() { Instance = instance });
             }
         }
     }
@@ -64,7 +55,7 @@ namespace ServerControlService.Service
 
     public class ServerControlManagementService
     {
-        public static TimeSpan AppInstanceExpireTimeOfMinutes = TimeSpan.FromMinutes(1);
+        public static TimeSpan AppInstanceExpireTime = TimeSpan.FromMinutes(1);
 
         private ConnectionMultiplexer redis;
         
@@ -135,7 +126,7 @@ namespace ServerControlService.Service
                     try
                     {
                         var db = redis.GetDatabase();
-                        if (db.KeyExpire(idKey, AppInstanceExpireTimeOfMinutes))
+                        if (db.KeyExpire(idKey, AppInstanceExpireTime))
                         {
                             observer.DispatchExpireOnce(instance);
                         }else
@@ -147,7 +138,7 @@ namespace ServerControlService.Service
                     {
                         observer.DispatchExpireError(instance, ex);
                     }
-                    Thread.Sleep((int)(AppInstanceExpireTimeOfMinutes.TotalMilliseconds * 3 / 4));
+                    Thread.Sleep((int)(AppInstanceExpireTime.TotalMilliseconds * 3 / 4));
                 }
             });
             thread.IsBackground = true;

@@ -38,9 +38,10 @@ namespace ServerControlService
 
         private static void KeepAliveObserver_OnExpireOnce(object sender, KeepAliveObserverEventArgs e)
         {
-#if DEBUG
-            Console.WriteLine("App Heart Beat : " + e.Instance.Id);
-#endif
+            Task.Run(async () =>
+            {
+                await ManagementService.NotifyAppInstanceHeartBeatAsync(e.Instance);
+            });
         }
 
         private static void KeepAliveObserver_OnExpireError(object sender, KeepAliveObserverEventArgs e)

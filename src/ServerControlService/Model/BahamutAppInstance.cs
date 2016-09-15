@@ -52,7 +52,7 @@ namespace ServerControlService.Model
             {
                 if (string.IsNullOrWhiteSpace(value) || value.Length > 13)
                 {
-                    throw new Exception("Channel Must Be A 1-13 Length String ");
+                    throw new Exception("Channel Must Be A 1-13 Length String, Current Is " + value);
                 }
                 else
                 {
